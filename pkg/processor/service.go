@@ -40,7 +40,7 @@ func (s *Service) StartPoller() {
 	wg := &sync.WaitGroup{}
 	wg.Add(s.ThreadCount)
 	for i := 0; i < s.ThreadCount; i++ {
-		go s.poll()
+		go s.poll() //didn't added wg.done since pollers need to run always
 	}
 	wg.Wait()
 }
@@ -57,7 +57,7 @@ func (s *Service) poll() {
 			log.Err(err).Timestamp().Msg("Error happened while receiving message")
 		}
 		if len(out.Messages) > 0 {
-			go func() {
+			go func() { //todo check maybe potentially goroutine leak?
 				err, entries := s.writeDynamoDB(out.Messages)
 				if err != nil {
 					log.Err(err).Timestamp().Msg("error")
