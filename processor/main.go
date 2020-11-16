@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"simpleawsgo/pkg/client"
 	"simpleawsgo/pkg/processor"
 )
 
 func main() {
+	cleanup := client.InitTracer("sqspoller-webischia")
+	defer cleanup()
 	readConfig()
 	qService := processor.Service{}
 	if err := qService.Init(); err != nil {

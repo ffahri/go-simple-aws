@@ -1,11 +1,14 @@
 package processor
 
 import (
+	"context"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel/api/global"
+	"go.opentelemetry.io/otel/api/trace"
 	"simpleawsgo/pkg/client"
 	"simpleawsgo/pkg/model"
 	"strconv"
@@ -40,7 +43,7 @@ func (s *Service) StartPoller() {
 	wg := &sync.WaitGroup{}
 	wg.Add(s.ThreadCount)
 	for i := 0; i < s.ThreadCount; i++ {
-		go s.poll() //didn't added wg.done since pollers need to run always
+		go s.poll() //didn't added wg.done since pollers need to run always - todo is that a good practice ? - how to stop ?
 	}
 	wg.Wait()
 }
@@ -49,10 +52,12 @@ func (s *Service) poll() {
 	log.Info().Msg("Poller started")
 	for true {
 		out, err := s.SQS.ReceiveMessage(&sqs.ReceiveMessageInput{
-			MaxNumberOfMessages: aws.Int64(10),
-			QueueUrl:            s.QueueURL,
-			WaitTimeSeconds:     aws.Int64(20),
+			MaxNumberOfMessages:   aws.Int64(10),
+			QueueUrl:              s.QueueURL,
+			WaitTimeSeconds:       aws.Int64(20),
+			MessageAttributeNames: aws.StringSlice([]string{"traceID", "spanID", "traceFlag"}),
 		})
+
 		if err != nil {
 			log.Err(err).Timestamp().Msg("Error happened while receiving message")
 		}
@@ -79,8 +84,24 @@ func (s *Service) writeDynamoDB(messageList []*sqs.Message) (error, []*sqs.Delet
 	var wrArr []*dynamodb.WriteRequest
 	var reqEntryArr []*sqs.DeleteMessageBatchRequestEntry
 	for _, message := range messageList {
+		traceID := message.MessageAttributes["traceID"].StringValue
+		spanID := message.MessageAttributes["spanID"].StringValue
+
+		traceId, err := trace.IDFromHex(*traceID)
+		spanId, err := trace.SpanIDFromHex(*spanID)
+
+		sc2 := trace.SpanContext{
+			TraceID:    traceId,
+			SpanID:     spanId,
+			TraceFlags: byte(0x01),
+		}
+
+		ctx := trace.ContextWithRemoteSpanContext(context.Background(), sc2)
+		_, span := global.Tracer("").Start(ctx, "writeMessageToDynamoDb")
+		defer span.End()
 		mdl, err := model.UnmarshallModel(message.Body)
 		if err != nil {
+			span.SetAttribute("err", err.Error())
 			//collect and send err in end
 		} else {
 			wrArr = append(wrArr, &dynamodb.WriteRequest{

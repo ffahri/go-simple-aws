@@ -5,10 +5,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	middleware "go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin"
 	"simpleawsgo/pkg/api"
+	"simpleawsgo/pkg/client"
 )
 
 func main() {
+	cleanup := client.InitTracer("api-webischia")
+	defer cleanup()
+
 	readConfig()
 	service := api.Service{}
 	if err := service.Init(); err != nil {
@@ -16,8 +21,10 @@ func main() {
 	} else {
 		log.Info().Timestamp().Msg("clients are initialized")
 	}
+
 	r := gin.New()
-	r.POST("/send", service.SendHandler) //TODO add tracing
+	r.Use(middleware.Middleware("aws-sqs-api"))
+	r.POST("/send", service.SendHandler)
 	if err := r.Run(); err != nil {
 		log.Fatal().Err(err).Timestamp().Msg("server stopped with error")
 	}
