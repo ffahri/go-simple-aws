@@ -92,10 +92,12 @@ func (s *Service) SendHandler(c *gin.Context) {
 		return
 	}
 	span.SetAttribute("id", mdl.Id)
-	if err := s.sendMessage(mdl, ctx); err != nil {
-		c.JSON(500, "internal server error")
-		return
-	} else {
-		c.JSON(201, "success")
-	}
+	go func() {
+		err := s.sendMessage(mdl, ctx)
+		log.Err(err).Msg("Error happened while sending message to sqs") //todo alert - retry based on exception
+	}()
+
+	c.JSON(201, "success")
+	return
+
 }

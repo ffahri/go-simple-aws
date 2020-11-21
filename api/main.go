@@ -11,9 +11,10 @@ import (
 )
 
 func main() {
-	cleanup := client.InitTracer("api-webischia")
+	/*cleanup := client.InitHoneyCombTracer("api-webischia")
 	defer cleanup()
-
+	*/
+	client.InitLocalTracer("api-webischia")
 	readConfig()
 	service := api.Service{}
 	if err := service.Init(); err != nil {

@@ -54,7 +54,7 @@ func (s *Service) poll() {
 		out, err := s.SQS.ReceiveMessage(&sqs.ReceiveMessageInput{
 			MaxNumberOfMessages:   aws.Int64(10),
 			QueueUrl:              s.QueueURL,
-			WaitTimeSeconds:       aws.Int64(20),
+			WaitTimeSeconds:       aws.Int64(1),
 			MessageAttributeNames: aws.StringSlice([]string{"traceID", "spanID", "traceFlag"}),
 		})
 

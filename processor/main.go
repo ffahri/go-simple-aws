@@ -9,8 +9,9 @@ import (
 )
 
 func main() {
-	cleanup := client.InitTracer("sqspoller-webischia")
-	defer cleanup()
+	/*cleanup := client.InitHoneyCombTracer("sqspoller-webischia")
+	defer cleanup()*/
+	client.InitLocalTracer("sqspoller-webischia")
 	readConfig()
 	qService := processor.Service{}
 	if err := qService.Init(); err != nil {

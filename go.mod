@@ -11,5 +11,6 @@ require (
 	github.com/spf13/viper v1.7.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin v0.11.0
 	go.opentelemetry.io/otel v0.11.0
+	go.opentelemetry.io/otel/exporters/trace/jaeger v0.11.0
 	go.opentelemetry.io/otel/sdk v0.11.0
 )
